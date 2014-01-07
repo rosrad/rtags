@@ -88,6 +88,7 @@ set(RDM_SOURCES
   JobRequestMessage.cpp
   JobResponseMessage.cpp
   ListSymbolsJob.cpp
+  NetworkThread.cpp
   PreprocessJob.cpp
   Preprocessor.cpp
   Project.cpp
