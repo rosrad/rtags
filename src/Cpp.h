@@ -42,6 +42,7 @@ struct Cpp
     SymbolMap macroCursors;
     SymbolNameMap macroNames;
     Map<Path, uint32_t> visited;
+    Map<Path, uint32_t> resolvedPaths;
 };
 
 template <> inline Serializer &operator<<(Serializer &s, const Cpp::Diagnostic &d)
@@ -60,13 +61,15 @@ template <> inline Deserializer &operator>>(Deserializer &s, Cpp::Diagnostic &d)
 
 template <> inline Serializer &operator<<(Serializer &s, const Cpp &c)
 {
-    s << c.preprocessed << c.time << c.diagnostics << c.macroCursors << c.macroNames << c.visited;
+    s << c.preprocessed << c.time << c.diagnostics << c.macroCursors
+      << c.macroNames << c.visited << c.resolvedPaths;
     return s;
 }
 
 template <> inline Deserializer &operator>>(Deserializer &s, Cpp &c)
 {
-    s >> c.preprocessed >> c.time >> c.diagnostics >> c.macroCursors >> c.macroNames >> c.visited;
+    s >> c.preprocessed >> c.time >> c.diagnostics >> c.macroCursors
+      >> c.macroNames >> c.visited >> c.resolvedPaths;
     return s;
 }
 

@@ -411,27 +411,31 @@ bool compile(const Path& output, const Source &source, const String& preprocesse
     return true;
 }
 
-static inline uint32_t visitFile(const Path &path,
+static inline uint32_t visitFile(const char *path,
                                  const std::shared_ptr<Cpp> &cpp,
                                  const std::shared_ptr<Project> &project,
                                  Map<Path, uint32_t> &blockedCache,
                                  bool *blocked)
 {
-    assert(!path.contains(".."));
+    assert(!strstr(path, ".."));
     assert(blocked);
     *blocked = false;
+    Path resolved = path;
+    bool changed;
+    if (!resolved.resolve(Path::RealPath, Path(), &changed))
+        return 0;
     if (!project)
         return Location::insertFile(path);
 
     {
-        const Map<Path, uint32_t>::const_iterator it = cpp->visited.find(path);
+        const Map<Path, uint32_t>::const_iterator it = cpp->visited.find(resolved);
         if (it != cpp->visited.end()) {
             return it->second;
         }
     }
 
     {
-        const Map<Path, uint32_t>::const_iterator it = blockedCache.find(path);
+        const Map<Path, uint32_t>::const_iterator it = blockedCache.find(resolved);
         if (it != blockedCache.end()) {
             return it->second;
         }
@@ -628,7 +632,8 @@ std::shared_ptr<Cpp> preprocess(const Source &source, const std::shared_ptr<Proj
         for (auto it = diagnostics[i].begin; it != diagnostics[i].end; ++it) {
             const clang::PresumedLoc presumedLocation = sm.getPresumedLoc(it->first);
             Path path = presumedLocation.getFilename();
-            if (!path.resolve())
+            bool changed;
+            if (!path.resolve(Path::RealPath, Path(), &changed))
                 continue;
             bool blocked;
             const uint32_t fileId = visitFile(path, cpp, project, blockedCache, &blocked);
