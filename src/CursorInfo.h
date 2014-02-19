@@ -51,6 +51,65 @@ public:
           startLine(-1), startColumn(-1), endLine(-1), endColumn(-1)
     {}
 
+    CursorInfo(CursorInfo &&other)
+        : symbolLength(other.symbolLength), symbolName(std::move(other.symbolName)),
+          kind(other.kind), type(other.type), enumValue(other.enumValue), targets(std::move(other.targets)),
+          references(std::move(other.references)), startLine(other.startLine),
+          startColumn(other.startColumn), endLine(other.endLine), endColumn(other.endColumn)
+    {
+        other.symbolLength = 0;
+        other.kind = CXCursor_FirstInvalid;
+        other.type = CXType_Invalid;
+        other.enumValue = 0;
+    }
+
+    CursorInfo(const CursorInfo &other)
+        : symbolLength(other.symbolLength), symbolName(other.symbolName),
+          kind(other.kind), type(other.type), enumValue(other.enumValue), targets(other.targets),
+          references(other.references), startLine(other.startLine),
+          startColumn(other.startColumn), endLine(other.endLine), endColumn(other.endColumn)
+    {
+    }
+
+    CursorInfo &operator=(CursorInfo &&other)
+    {
+        symbolLength = other.symbolLength;
+        kind = other.kind;
+        type = other.type;
+        enumValue = other.enumValue;
+        startLine = other.startLine;
+        startColumn = other.startColumn;
+        endLine = other.endLine;
+        endColumn = other.endColumn;
+
+        other.symbolLength = 0;
+        other.kind = CXCursor_FirstInvalid;
+        other.type = CXType_Invalid;
+        other.enumValue = 0;
+        targets = std::move(other.targets);
+        references = std::move(other.references);
+        symbolName = std::move(other.symbolName);
+
+        return *this;
+    }
+
+    CursorInfo &operator=(const CursorInfo &other)
+    {
+        symbolLength = other.symbolLength;
+        kind = other.kind;
+        type = other.type;
+        enumValue = other.enumValue;
+        startLine = other.startLine;
+        startColumn = other.startColumn;
+        endLine = other.endLine;
+        endColumn = other.endColumn;
+
+        targets = other.targets;
+        references = other.references;
+        symbolName = other.symbolName;
+        return *this;
+    }
+
     void clear()
     {
         symbolLength = 0;

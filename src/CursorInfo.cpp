@@ -138,7 +138,7 @@ SymbolMap CursorInfo::targetInfos(const SymbolMap &map) const
         auto found = RTags::findCursorInfo(map, *it, String());
         // ### could/should I pass symbolName as context here?
         if (found != map.end()) {
-            ret[*it] = found->second;
+            ret[*it] = std::move(found->second);
         } else {
             ret[*it] = CursorInfo();
             // we need this one for inclusion directives which target a
@@ -269,10 +269,10 @@ SymbolMap CursorInfo::declarationAndDefinition(const Location &loc, const Symbol
     cursors[loc] = *this;
 
     Location l;
-    const CursorInfo t = bestTarget(map, &l);
+    CursorInfo t = bestTarget(map, &l);
 
     if (t.kind == kind)
-        cursors[l] = t;
+        cursors[l] = std::move(t);
     return cursors;
 }
 
