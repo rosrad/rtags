@@ -646,16 +646,14 @@ void ClangIndexer::handleReference(const CXCursor &cursor, CXCursorKind kind, co
     if (!reffedLoc.isValid())
         return;
 
-    std::shared_ptr<CursorInfo> &refInfo = mData->symbols[reffedLoc];
-    if (!refInfo && !handleCursor(ref, refKind, reffedLoc))
+    CursorInfo &refInfo = mData->symbols[reffedLoc];
+    if (!refInfo.symbolLength && !handleCursor(ref, refKind, reffedLoc))
         return;
 
-    refInfo->references.insert(location);
+    refInfo.references.insert(location);
 
-    std::shared_ptr<CursorInfo> &info = mData->symbols[location];
-    if (!info)
-        info.reset(new CursorInfo);
-    info->targets.insert(reffedLoc);
+    CursorInfo &info = mData->symbols[location];
+    info.targets.insert(reffedLoc);
 
     // We need the new cursor to replace the symbolLength. This is important
     // in the following case:
@@ -672,29 +670,29 @@ void ClangIndexer::handleReference(const CXCursor &cursor, CXCursorKind kind, co
     // The !isCursor is var decls and field decls where we set up a target even
     // if they're not considered references
 
-    if (!RTags::isCursor(info->kind) && (!info->symbolLength || info->bestTarget(mData->symbols)->kind == refKind)) {
+    if (!RTags::isCursor(info.kind) && (!info.symbolLength || info.bestTarget(mData->symbols).kind == refKind)) {
         CXSourceRange range = clang_getCursorExtent(cursor);
         CXSourceLocation rangeStart = clang_getRangeStart(range);
         CXSourceLocation rangeEnd = clang_getRangeEnd(range);
         unsigned startLine, startColumn, endLine, endColumn;
         clang_getPresumedLocation(rangeStart, 0, &startLine, &startColumn);
         clang_getPresumedLocation(rangeEnd, 0, &endLine, &endColumn);
-        info->startLine = startLine;
-        info->startColumn = startColumn;
-        info->endLine = endLine;
-        info->endColumn = endColumn;
-        info->definition = false;
-        info->kind = kind;
+        info.startLine = startLine;
+        info.startColumn = startColumn;
+        info.endLine = endLine;
+        info.endColumn = endColumn;
+        info.definition = false;
+        info.kind = kind;
         if (isOperator) {
             unsigned start, end;
             clang_getSpellingLocation(rangeStart, 0, 0, 0, &start);
             clang_getSpellingLocation(rangeEnd, 0, 0, 0, &end);
-            info->symbolLength = end - start;
+            info.symbolLength = end - start;
         } else {
-            info->symbolLength = refInfo->symbolLength;
+            info.symbolLength = refInfo.symbolLength;
         }
-        info->symbolName = refInfo->symbolName;
-        info->type = clang_getCursorType(cursor).kind;
+        info.symbolName = refInfo.symbolName;
+        info.type = clang_getCursorType(cursor).kind;
     }
 
     Set<Location> &val = mData->references[location];
@@ -711,12 +709,10 @@ void ClangIndexer::addOverriddenCursors(const CXCursor& cursor, const Location& 
         return;
     for (unsigned i=0; i<count; ++i) {
         Location loc = createLocation(overridden[i]);
-        std::shared_ptr<CursorInfo> &o = mData->symbols[loc];
-        if (!o)
-            o.reset(new CursorInfo);
+        CursorInfo &o = mData->symbols[loc];
 
         //error() << "adding overridden (1) " << location << " to " << o;
-        o->references.insert(location);
+        o.references.insert(location);
         List<CursorInfo*>::const_iterator inf = infos.begin();
         const List<CursorInfo*>::const_iterator infend = infos.end();
         while (inf != infend) {
@@ -725,7 +721,7 @@ void ClangIndexer::addOverriddenCursors(const CXCursor& cursor, const Location& 
             ++inf;
         }
 
-        infos.append(o.get());
+        infos.append(&o);
         addOverriddenCursors(overridden[i], loc, infos);
         infos.removeLast();
     }
@@ -748,14 +744,12 @@ void ClangIndexer::handleInclude(const CXCursor &cursor, CXCursorKind kind, cons
                 mData->symbolNames[(include + path)].insert(location);
                 mData->symbolNames[(include + path.fileName())].insert(location);
             }
-            std::shared_ptr<CursorInfo> &info = mData->symbols[location];
-            if (!info)
-                info.reset(new CursorInfo);
-            info->targets.insert(refLoc);
-            info->kind = cursor.kind;
-            info->definition = false;
-            info->symbolName = "#include " + RTags::eatString(clang_getCursorDisplayName(cursor));
-            info->symbolLength = info->symbolName.size() + 2;
+            CursorInfo &info = mData->symbols[location];
+            info.targets.insert(refLoc);
+            info.kind = cursor.kind;
+            info.definition = false;
+            info.symbolName = "#include " + RTags::eatString(clang_getCursorDisplayName(cursor));
+            info.symbolLength = info.symbolName.size() + 2;
             // this fails for things like:
             // # include    <foobar.h>
         }
@@ -765,11 +759,8 @@ void ClangIndexer::handleInclude(const CXCursor &cursor, CXCursorKind kind, cons
 bool ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKind kind, const Location &location)
 {
     // error() << "Got a cursor" << cursor;
-    std::shared_ptr<CursorInfo> &info = mData->symbols[location];
-    if (!info)
-        info.reset(new CursorInfo);
-
-    if (!info->symbolLength || !RTags::isCursor(info->kind)) {
+    CursorInfo &info = mData->symbols[location];
+    if (!info.symbolLength || !RTags::isCursor(info.kind)) {
         // if (mLogFile) {
         //     String out;
         //     Log(&out) << cursor << a;
@@ -778,9 +769,9 @@ bool ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKind kind, const
         // }
         CXStringScope name = clang_getCursorSpelling(cursor);
         const char *cstr = name.data();
-        info->symbolLength = cstr ? strlen(cstr) : 0;
-        info->type = clang_getCursorType(cursor).kind;
-        if (!info->symbolLength) {
+        info.symbolLength = cstr ? strlen(cstr) : 0;
+        info.type = clang_getCursorType(cursor).kind;
+        if (!info.symbolLength) {
             // this is for these constructs:
             // typedef struct {
             //    int a;
@@ -790,23 +781,23 @@ bool ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKind kind, const
 
             switch (kind) {
             case CXCursor_ClassDecl:
-                info->symbolLength = 5;
-                info->symbolName = "class";
+                info.symbolLength = 5;
+                info.symbolName = "class";
                 break;
             case CXCursor_UnionDecl:
-                info->symbolLength = 5;
-                info->symbolName = "union";
+                info.symbolLength = 5;
+                info.symbolName = "union";
                 break;
             case CXCursor_StructDecl:
-                info->symbolLength = 6;
-                info->symbolName = "struct";
+                info.symbolLength = 6;
+                info.symbolName = "struct";
                 break;
             default:
                 mData->symbols.remove(location);
                 return false;
             }
         } else {
-            info->symbolName = addNamePermutations(cursor, location);
+            info.symbolName = addNamePermutations(cursor, location);
         }
 
         CXSourceRange range = clang_getCursorExtent(cursor);
@@ -815,21 +806,21 @@ bool ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKind kind, const
         unsigned startLine, startColumn, endLine, endColumn;
         clang_getPresumedLocation(rangeStart, 0, &startLine, &startColumn);
         clang_getPresumedLocation(rangeEnd, 0, &endLine, &endColumn);
-        info->startLine = startLine;
-        info->startColumn = startColumn;
-        info->endLine = endLine;
-        info->endColumn = endColumn;
+        info.startLine = startLine;
+        info.startColumn = startColumn;
+        info.endLine = endLine;
+        info.endColumn = endColumn;
 
         if (kind == CXCursor_EnumConstantDecl) {
 #if CINDEX_VERSION_MINOR > 1
-            info->enumValue = clang_getEnumConstantDeclValue(cursor);
+            info.enumValue = clang_getEnumConstantDeclValue(cursor);
 #else
-            info->definition = 1;
+            info.definition = 1;
 #endif
         } else {
-            info->definition = clang_isCursorDefinition(cursor);
+            info.definition = clang_isCursorDefinition(cursor);
         }
-        info->kind = kind;
+        info.kind = kind;
         // apparently some function decls will give a different usr for
         // their definition and their declaration.  Using the canonical
         // cursor's usr allows us to join them. Check JSClassRelease in
@@ -838,23 +829,21 @@ bool ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKind kind, const
         if (!usr.isEmpty())
             mData->usrMap[usr].insert(location);
 
-        switch (info->kind) {
+        switch (info.kind) {
         case CXCursor_Constructor:
         case CXCursor_Destructor: {
             Location parentLocation = createLocation(clang_getCursorSemanticParent(cursor));
             // consider doing this for only declaration/inline definition since
             // declaration and definition should know of one another
             if (parentLocation.isValid()) {
-                std::shared_ptr<CursorInfo> &parent = mData->symbols[parentLocation];
-                if (!parent)
-                    parent.reset(new CursorInfo);
-                parent->references.insert(location);
-                info->references.insert(parentLocation);
+                CursorInfo &parent = mData->symbols[parentLocation];
+                parent.references.insert(location);
+                info.references.insert(parentLocation);
             }
             break; }
         case CXCursor_CXXMethod: {
             List<CursorInfo*> infos;
-            infos.append(info.get());
+            infos.append(&info);
             addOverriddenCursors(cursor, location, infos);
             break; }
         default:

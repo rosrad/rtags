@@ -144,7 +144,8 @@ void dirtySymbols(SymbolMap &map, const Set<uint32_t> &dirty)
         if (dirty.contains(it->first.fileId())) {
             map.erase(it++);
         } else {
-            it->second->dirty(dirty);
+            CursorInfo &cursorInfo = it->second;
+            cursorInfo.dirty(dirty);
             ++it;
         }
     }
