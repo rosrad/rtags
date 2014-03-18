@@ -33,7 +33,7 @@ Path Source::compiler() const
 
 String Source::toString() const
 {
-    String ret = String::join(toCommandLine(IncludeCompiler|IncludeSourceFile|QuoteDefines|IncludeDefines|IncludeDefines), ' ');
+    String ret = String::join(toCommandLine(IncludeCompiler|IncludeSourceFile|QuoteDefines|IncludeDefines), ' ');
     if (buildRootId)
         ret << " Build: " << buildRoot();
     if (parsed)
@@ -587,7 +587,7 @@ List<String> Source::toCommandLine(unsigned int flags) const
     }
     if (flags & IncludeDefines) {
         for (const auto &def : defines)
-            ret += def.toString(flags & QuoteDefines ? Define::Quote : Define::None);
+            ret += def.toString(flags);
     }
     if (flags & IncludeIncludepaths) {
         for (const auto &inc : includePaths) {

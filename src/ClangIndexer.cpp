@@ -924,7 +924,7 @@ bool ClangIndexer::parse()
 
     unsigned int commandLineFlags = Source::FilterBlacklist;
     if (mPreprocessed.isEmpty())
-        commandLineFlags |= (Source::IncludeDefines|Source::IncludeIncludepaths);
+        commandLineFlags |= (Source::IncludeDefines|Source::IncludeIncludepaths|Source::QuoteDefines);
 
     const unsigned int flags = mPreprocessed.isEmpty() ? CXTranslationUnit_DetailedPreprocessingRecord : 0;
     RTags::parseTranslationUnit(sourceFile, mSource.toCommandLine(commandLineFlags), List<String>(), mUnit,
