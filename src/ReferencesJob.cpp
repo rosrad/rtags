@@ -138,20 +138,48 @@ void ReferencesJob::execute()
         } else {
             std::sort(sorted.begin(), sorted.end());
         }
-        int startIndex = 0;
-        const int count = sorted.size();
-        if (!startLocation.isNull()) {
+        if (queryFlags() & QueryMessage::ElispList) {
+            // (list (cons filename (list (list line col functionName context)
+            //                            (list line col functionName context))))
+            //       (cons filename2 (list (list line col functionName context)
+            //                             (list line col functionName context)))))
+            uint32_t lastFile = 0;
+            String out;
+            out.reserve(1024);
+            out += "(list ";
             for (int i=0; i<count; ++i) {
-                if (sorted.at(i).location == startLocation) {
-                    startIndex = i + 1;
-                    break;
+                const Location &loc = sorted.at(i).location;
+                const uint32_t f = loc.fileId();
+                if (f != lastFile) {
+                    if (lastFile) {
+                        out += ")))\n      (cons \"" + Location::path(f) + "\" ";
+                    } else {
+                        out += "\n                     ";
+                    }
+                    lastFile = f;
+                    out += String::format<128>("(list %d %d \"%s\" \"%s\")",
+                                               loc.line(), loc.column(),
+                    out += " (cons \"" + Location::path(lastFile) + "\" " + (list
+                }
+
+                write(loc);
+            }
+        } else {
+            int startIndex = 0;
+            const int count = sorted.size();
+            if (!startLocation.isNull()) {
+                for (int i=0; i<count; ++i) {
+                    if (sorted.at(i).location == startLocation) {
+                        startIndex = i + 1;
+                        break;
+                    }
                 }
             }
-        }
 
-        for (int i=0; i<count; ++i) {
-            const Location &loc = sorted.at((startIndex + i) % count).location;
-            write(loc);
+            for (int i=0; i<count; ++i) {
+                const Location &loc = sorted.at((startIndex + i) % count).location;
+                write(loc);
+            }
         }
     }
 }
