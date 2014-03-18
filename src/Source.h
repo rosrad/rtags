@@ -130,8 +130,9 @@ struct Source
     bool operator<(const Source &other) const;
     bool operator>(const Source &other) const;
 
+    enum { None = 0x00 }; // shared enum
+
     enum CommandLineMode {
-        None = 0x00,
         IncludeCompiler = 0x01,
         IncludeSourceFile = 0x02,
         IncludeDefines = 0x04,
@@ -149,7 +150,11 @@ struct Source
     String toString() const;
     Path sysRoot() const { return arguments.value(sysRootIndex, "/"); }
 
-    static Source parse(const String &cmdLine, const Path &pwd, Path *unresolvedInputLocation = 0);
+    enum ParseFlag {
+        Escape = 0x1
+    };
+    static Source parse(const String &cmdLine, const Path &pwd,
+                        unsigned int flags, Path *unresolvedInputLocation = 0);
 };
 
 inline Source::Source()

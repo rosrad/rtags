@@ -441,10 +441,15 @@ void Server::onNewMessage(Message *message, Connection *connection)
     }
 }
 
-void Server::index(const String &arguments, const Path &pwd, const List<String> &withProjects)
+void Server::index(const String &arguments, const Path &pwd,
+                   const List<String> &withProjects, bool escape)
 {
+    error() << "STUFF" << arguments << pwd << escape;
     Path unresolvedPath;
-    Source source = Source::parse(arguments, pwd, &unresolvedPath);
+    unsigned int flags = Source::None;
+    if (escape)
+        flags |= Source::Escape;
+    Source source = Source::parse(arguments, pwd, flags, &unresolvedPath);
     if (!source.isIndexable())
         return;
     Path project = findProject(source.sourceFile(), unresolvedPath, withProjects);
@@ -481,7 +486,7 @@ void Server::preprocess(Source &&source, Path &&srcRoot, uint32_t flags)
 void Server::handleCompileMessage(CompileMessage &message, Connection *conn)
 {
     conn->finish();
-    index(message.arguments(), message.workingDirectory(), message.projects());
+    index(message.arguments(), message.workingDirectory(), message.projects(), message.escape());
 }
 
 void Server::handleExitMessage(const ExitMessage &message)
@@ -1365,7 +1370,7 @@ void Server::loadCompilationDatabase(const QueryMessage &query, Connection *conn
                 args += " ";
         }
 
-        index(args, dir, query.projects());
+        index(args, dir, query.projects(), true);
     }
     clang_CompileCommands_dispose(cmds);
     clang_CompilationDatabase_dispose(db);
@@ -1981,7 +1986,7 @@ void Server::onHttpClientReadyRead(const SocketClient::SharedPtr &socket)
 
 void Server::connectToServer()
 {
-    warning() << "connectToServer";
+    debug() << "connectToServer";
     mConnectToServerTimer.stop();
     assert(!(mOptions.options & JobServer));
     if (mServerConnection)
