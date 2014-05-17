@@ -255,7 +255,7 @@
   (gethash word rtags-c++-keywords))
 
 (defvar rtags-last-context nil)
-(defun* rtags-call-rc (&rest arguments
+(defun rtags-call-rc (&rest arguments
                              &key (path (buffer-file-name))
                              unsaved
                              async ;; nil or a cons (process-filter . sentinel)
